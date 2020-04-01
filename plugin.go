@@ -48,25 +48,31 @@ type (
 	}
 )
 
+const QYWXAPI = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key="
+
 func (p Plugin) Exec() error {
-	var b []byte
+	url := QYWXAPI + p.Config.Key
 
-	url := "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=" + p.Config.Key
+	var data Message
 
-	if p.Config.MsgType == "text" {
-		text := struct {
-			Content string `json:"content"`
-		}{p.Config.Content}
+	switch p.Config.MsgType {
+	case "text":
+		data = TextMessage{
+			MessageType{"text"},
+			TextBody{p.Config.Content},
+		}
 
-		data := struct {
-			MsgType string `json:"msgtype"`
-			Text    struct {
-				Content string `json:"content"`
-			} `json:"text"`
-		}{p.Config.MsgType, text}
+	case "markdown":
+		data = MarkdownMessage{
+			MessageType{"markdown"},
+			MarkdownBody{p.Config.Content},
+		}
 
-		b, _ = json.Marshal(data)
+	default:
+		return fmt.Errorf("unknown msgtype %s", p.Config.MsgType)
 	}
+
+	b, _ := json.Marshal(data)
 
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
 	if err != nil {
